@@ -22,6 +22,9 @@ Parameters:
   Service:
     Type: String
 
+  CodeBuildBuildSpecPath:
+    Type: String
+
 
 Resources:
   Repository:
@@ -115,6 +118,7 @@ Resources:
       Artifacts:
         Type: CODEPIPELINE
       Source:
+        BuildSpec: !Ref CodeBuildBuildSpecPath
         Type: CODEPIPELINE
       Environment:
         ComputeType: BUILD_GENERAL1_SMALL

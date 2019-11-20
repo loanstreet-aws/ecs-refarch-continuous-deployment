@@ -42,6 +42,12 @@ Parameters:
     Description: >
       Token for the user specified above. (https://github.com/settings/tokens)
 
+  CodeBuildBuildSpecPath:
+    Type: String
+    Default: buildspec.yml
+    Description: >
+      The path relative to build definition relative to CODEBUILD_SRC_DIR
+
   TemplateBucket:
     Type: String
     Default: ecs-refarch-continuous-deployment
@@ -98,6 +104,7 @@ Resources:
       Parameters:
         Cluster: !GetAtt Cluster.Outputs.ClusterName
         Service: !GetAtt Service.Outputs.Service
+        CodeBuildBuildSpecPath: !Ref CodeBuildBuildSpecPath
         GitHubUser: !Ref GitHubUser
         GitHubToken: !Ref GitHubToken
         GitHubRepo: !Ref GitHubRepo
