@@ -16,12 +16,6 @@ Parameters:
   GitHubUser:
     Type: String
 
-  Cluster:
-    Type: String
-
-  Service:
-    Type: String
-
   CodeBuildBuildSpecPath:
     Type: String
 
@@ -30,6 +24,29 @@ Resources:
   Repository:
     Type: AWS::ECR::Repository
     DeletionPolicy: Retain
+
+  CloudFormationExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: codebuild.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Resource: "*"
+                Effect: Allow
+                Action:
+                  - ecs:*
+                  - ecr:*
+                  - iam:*
 
   CodeBuildServiceRole:
     Type: AWS::IAM::Role
@@ -54,7 +71,9 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                   - ecr:GetAuthorizationToken
-              - Resource: !Sub arn:aws:s3:::${ArtifactBucket}/*
+              - Resource:
+                  - !Sub arn:aws:s3:::${ArtifactBucket}/*
+                  - !Sub arn:aws:s3:::${TemplateBucket}/*
                 Effect: Allow
                 Action:
                   - s3:GetObject
@@ -111,6 +130,9 @@ Resources:
   ArtifactBucket:
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
+
+  TemplateBucket:
+    Type: AWS::S3::Bucket
 
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
@@ -174,19 +196,39 @@ Resources:
               RunOrder: 1
         - Name: Deploy
           Actions:
+            - Name: Push
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: S3
+              Configuration:
+                BucketName: !Ref TemplateBucket
+                Extract: true
+              InputArtifacts:
+                - Name: BuildOutput
+              RunOrder: 1
             - Name: Deploy
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
                 Version: 1
-                Provider: ECS
+                Provider: CloudFormation
               Configuration:
-                ClusterName: !Ref Cluster
-                ServiceName: !Ref Service
-                FileName: images.json
+                ChangeSetName: Deploy
+                ActionMode: CREATE_UPDATE
+                StackName: !Sub "${AWS::StackName}-Deploy"
+                Capabilities: CAPABILITY_NAMED_IAM
+                TemplatePath: BuildOutput::configuration/cloud-formation/master.yml
+                RoleArn: !GetAtt CloudFormationExecutionRole.Arn
+                ParameterOverrides: !Sub |
+                  {
+                    "RepositoryUri": "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Repository}",
+                    "TemplateBucket": "${TemplateBucket}"
+                  }
               InputArtifacts:
                 - Name: BuildOutput
-              RunOrder: 1
+              RunOrder: 2
 
 
 Outputs:
