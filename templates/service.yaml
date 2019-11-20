@@ -69,7 +69,7 @@ Resources:
           Subnets: !Ref Subnets
       LoadBalancers:
         - ContainerName: simple-app
-          ContainerPort: 80
+          ContainerPort: 8080
           TargetGroupArn: !Ref TargetGroup
 
   EC2Service:
@@ -82,7 +82,7 @@ Resources:
       LaunchType: EC2
       LoadBalancers:
         - ContainerName: simple-app
-          ContainerPort: 80
+          ContainerPort: 8080
           TargetGroupArn: !Ref TargetGroup
 
   TaskDefinition:
@@ -98,37 +98,15 @@ Resources:
       ContainerDefinitions:
         - Name: simple-app
           Image: amazon/amazon-ecs-sample
-          EntryPoint:
-            - /usr/sbin/apache2
-            - -D
-            - FOREGROUND
           Essential: true
-          Memory: 256
-          MountPoints:
-            - SourceVolume: my-vol
-              ContainerPath: /var/www/my-vol
           PortMappings:
-            - ContainerPort: 80
+            - ContainerPort: 8080
           LogConfiguration:
             LogDriver: awslogs
             Options:
               awslogs-region: !Ref AWS::Region
               awslogs-group: !Ref LogGroup
               awslogs-stream-prefix: !Ref AWS::StackName
-        - Name: busybox
-          Image: busybox
-          EntryPoint:
-            - sh
-            - -c
-          Essential: true
-          Memory: 256
-          VolumesFrom:
-            - SourceContainer: simple-app
-          Command:
-            - /bin/sh -c "while true; do /bin/date > /var/www/my-vol/date; sleep 1; done"
-      Volumes:
-        - Name: my-vol
-
 
 Outputs:
   Service:
